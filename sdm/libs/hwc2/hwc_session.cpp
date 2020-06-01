@@ -41,6 +41,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <cutils/sockets.h>
 
 #include "hwc_buffer_allocator.h"
 #include "hwc_session.h"
@@ -50,6 +51,8 @@
 
 #define HWC_UEVENT_SWITCH_HDMI "change@/devices/virtual/switch/hdmi"
 #define HWC_UEVENT_DRM_EXT_HOTPLUG "mdss_mdp/drm/card"
+
+extern void DisplayInit(sdm::HWCSession *hwc_session);
 
 static sdm::HWCSession::HWCModuleMethods g_hwc_module_methods;
 
@@ -182,9 +185,12 @@ int HWCSession::Init() {
     return -EINVAL;
   }
 
+  DisplayInit(this);
+
   HWCDebugHandler::Get()->GetProperty(ENABLE_NULL_DISPLAY_PROP, &null_display_mode_);
   HWCDebugHandler::Get()->GetProperty(DISABLE_HOTPLUG_BWCHECK, &disable_hotplug_bwcheck_);
   HWCDebugHandler::Get()->GetProperty(DISABLE_MASK_LAYER_HINT, &disable_mask_layer_hint_);
+  HWCDebugHandler::Get()->GetProperty(LBE_SUPPORTED, &is_lbe_supported_);
 
   if (!null_display_mode_) {
     g_hwc_uevent_.Register(this);
@@ -211,6 +217,9 @@ int HWCSession::Init() {
 }
 
 int HWCSession::Deinit() {
+  if (pps_socket_ >= 0)
+    close(pps_socket_);
+
   // Destroy all connected displays
   DestroyDisplay(&map_info_primary_);
 
@@ -3614,6 +3623,116 @@ void HWCSession::NotifyClientStatus(bool connected) {
     SCOPE_LOCK(locker_[i]);
     hwc_display_[i]->NotifyClientStatus(connected);
   }
+}
+
+bool HWCSession::IsHbmSupported() {
+  auto hwc_display = hwc_display_[HWC_DISPLAY_PRIMARY];
+
+  if (hwc_display)
+    return hwc_display->IsHbmSupported();
+
+  return 0;
+}
+
+void HWCSession::SetHbmState(HbmState state) {
+  auto device = static_cast<hwc2_device_t *>(this);
+  CallDisplayFunction(device, HWC_DISPLAY_PRIMARY, &HWCDisplay::SetHbm, state, HWCDisplay::APP);
+}
+
+HbmState HWCSession::GetHbmState() {
+  auto hwc_display = hwc_display_[HWC_DISPLAY_PRIMARY];
+
+  if (hwc_display)
+    return hwc_display->GetHbm();
+
+  return HbmState::OFF;
+}
+
+bool HWCSession::IsLbeSupported() {
+  return (is_lbe_supported_ != 0);
+}
+
+void HWCSession::SetLbeState(LbeState state) {
+  std::string_view state_cmd;
+  int ret = 0;
+
+  if (!is_lbe_supported_) {
+    DLOGE("lbe is not supported");
+    return;
+  }
+
+  if (lbe_cur_state_ == state)
+    return;
+
+  switch (state) {
+    case LbeState::OFF:
+      state_cmd = ltm_off_cmd_;
+      break;
+    case LbeState::NORMAL:
+      state_cmd = ltm_default_mode_cmd_;
+      break;
+    case LbeState::HIGH_BRIGHTNESS:
+      state_cmd = ltm_hbm_mode_cmd_;
+      break;
+    case LbeState::POWER_SAVE:
+      state_cmd = ltm_power_save_mode_cmd_;
+      break;
+    default:
+      DLOGE("lbe mode not support");
+      return;
+  }
+
+  if (lbe_cur_state_ == LbeState::OFF) {
+    std::string_view on_cmd = ltm_on_cmd_;
+    ret = SendLTMCommand(on_cmd.data());
+    if (ret) {
+      DLOGE("failed to enable lbe");
+      return;
+    }
+  }
+
+  ret = SendLTMCommand(state_cmd.data());
+  if (!ret)
+    lbe_cur_state_ = state;
+}
+
+void HWCSession::SetLbeAmbientLight(int value) {
+  if (!is_lbe_supported_ || value < 0 || (lbe_cur_state_ == LbeState::OFF))
+    return;
+
+  std::string cmd = ltm_lux_cmd_;
+  std::string val = std::to_string(value);
+
+  cmd += val;
+
+  SendLTMCommand(cmd.c_str());
+}
+
+LbeState HWCSession::GetLbeState() {
+  return lbe_cur_state_;
+}
+
+int HWCSession::SendLTMCommand(const char *cmd) {
+  if (!cmd || !pps_retry)
+    return -EINVAL;
+
+  while ((pps_retry > 0) && (pps_socket_ < 0)) {
+    pps_socket_ = socket_local_client("pps", ANDROID_SOCKET_NAMESPACE_RESERVED, SOCK_STREAM);
+    if (pps_socket_ < 0) {
+      pps_retry--;
+      if (pps_retry == 0) {
+        DLOGE("Connecting to pps socket failed, error = %s", strerror(errno));
+        return -ETIMEDOUT;
+      }
+    }
+  }
+
+  int ret = write(pps_socket_, cmd, strlen(cmd));
+  if (ret < 0) {
+    DLOGE("Failed to send LTM cmd, error = %s", strerror(errno));
+    return -EINVAL;
+  }
+  return 0;
 }
 
 }  // namespace sdm

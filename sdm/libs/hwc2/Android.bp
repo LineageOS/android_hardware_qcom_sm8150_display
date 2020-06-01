@@ -57,7 +57,9 @@ cc_library_shared {
         "android.hardware.graphics.composer@2.2",
         "android.hardware.graphics.composer@2.3",
         "android.hardware.graphics.composer@2.4",
-        "hardware.google.light@1.0",
+        "com.google.hardware.pixel.display-V1-ndk",
+        "libbinder_ndk",
+        "libbase",
     ],
 
     srcs: [
@@ -79,5 +81,18 @@ cc_library_shared {
         "display_null.cpp",
         "hwc_socket_handler.cpp",
         "hwc_buffer_allocator.cpp",
+        "pixel-display.cpp",
     ],
+
+    required: [
+        "pixel-display-default.xml",
+    ],
+}
+
+prebuilt_etc_xml {
+    name: "pixel-display-default.xml",
+    src: "pixel-display-default.xml",
+    filename_from_src: true,
+    sub_dir: "vintf/manifest",
+    vendor: true,
 }

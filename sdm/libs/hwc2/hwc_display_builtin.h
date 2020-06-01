@@ -30,7 +30,6 @@
 #ifndef __HWC_DISPLAY_BUILTIN_H__
 #define __HWC_DISPLAY_BUILTIN_H__
 
-#include <hardware/google/light/1.0/ILight.h>
 #include <limits>
 #include <string>
 #include <vector>
@@ -116,6 +115,10 @@ class HWCDisplayBuiltIn : public HWCDisplay {
   std::string Dump() override;
   virtual HWC2::Error UpdatePowerMode(HWC2::PowerMode mode);
 
+  virtual bool IsHbmSupported() override;
+  virtual HWC2::Error SetHbm(HbmState state, HbmClient client) override;
+  virtual HbmState GetHbm() override;
+
  private:
   HWCDisplayBuiltIn(CoreInterface *core_intf, BufferAllocator *buffer_allocator,
                     HWCCallbacks *callbacks, HWCDisplayEventHandler *event_handler,
@@ -133,6 +136,7 @@ class HWCDisplayBuiltIn : public HWCDisplay {
   bool CanSkipCommit();
   DisplayError SetMixerResolution(uint32_t width, uint32_t height);
   DisplayError GetMixerResolution(uint32_t *width, uint32_t *height);
+  HWC2::Error ApplyHbmLocked() REQUIRES(hbm_mutex);
   class PMICInterface {
    public:
     PMICInterface() { }
@@ -169,11 +173,16 @@ class HWCDisplayBuiltIn : public HWCDisplay {
   int frame_capture_status_ = -EAGAIN;
 
   // Members for HBM feature
+  static constexpr const char kHighBrightnessModeNode[] =
+      "/sys/class/backlight/panel0-backlight/hbm_mode";
   static constexpr float hbm_threshold_pct_ = 0.5f;
+  const bool mHasHbmNode = !access(kHighBrightnessModeNode, F_OK);
+  std::mutex hbm_mutex;
   float hbm_threshold_px_ = std::numeric_limits<float>::max();
-  android::sp<hardware::google::light::V1_0::ILight> hardware_ILight_ = nullptr;
-  bool has_init_light_server_ = false;
+  bool has_config_hbm_threshold_ = false;
   bool high_brightness_mode_ = false;
+  HbmState mHbmSates[CLIENT_MAX] GUARDED_BY(hbm_mutex) = {HbmState::OFF};
+  HbmState mCurHbmState GUARDED_BY(hbm_mutex) = HbmState::OFF;
 
   // Members for Color sampling feature
   DisplayError HistogramEvent(int fd, uint32_t blob_id) override;

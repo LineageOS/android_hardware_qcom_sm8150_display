@@ -223,6 +223,15 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   static Locker power_state_[HWCCallbacks::kNumDisplays];
   static Locker display_config_locker_;
 
+  void RegisterDisplayCallback();
+  bool IsHbmSupported();
+  void SetHbmState(HbmState state);
+  HbmState GetHbmState();
+  bool IsLbeSupported();
+  void SetLbeState(LbeState state);
+  void SetLbeAmbientLight(int value);
+  LbeState GetLbeState();
+
  private:
   struct DisplayMapInfo {
     hwc2_display_t client_id = HWCCallbacks::kNumDisplays;        // mapped sf id for this display
@@ -392,6 +401,8 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   void HandlePendingRefresh();
   void NotifyClientStatus(bool connected);
 
+  int SendLTMCommand(const char *cmd);
+
   CoreInterface *core_intf_ = nullptr;
   HWCDisplay *hwc_display_[HWCCallbacks::kNumDisplays] = {nullptr};
   HWCCallbacks callbacks_;
@@ -431,6 +442,18 @@ class HWCSession : hwc2_device_t, HWCUEventListener, IDisplayConfig, public qCli
   bool async_powermode_ = false;
   bool power_state_transition_[HWCCallbacks::kNumDisplays] = {};  // +1 to account for primary.
   std::bitset<HWCCallbacks::kNumDisplays> display_ready_;
+
+  int32_t is_lbe_supported_ = 0;
+  LbeState lbe_cur_state_ = LbeState::OFF;
+  int pps_socket_ = -1;
+  int8_t pps_retry = 5;
+  static constexpr const char *ltm_on_cmd_ = "Ltm:On:Primary:Auto";
+  static constexpr const char *ltm_off_cmd_ = "Ltm:Off:Primary";
+  static constexpr const char *ltm_lux_cmd_ = "Ltm:Als:Primary:";
+  static constexpr const char *ltm_default_mode_cmd_ = "Ltm:UserMode:Primary:default";
+  static constexpr const char *ltm_hbm_mode_cmd_ = "Ltm:UserMode:Primary:hbm";
+  static constexpr const char *ltm_power_save_mode_cmd_ = "Ltm:UserMode:Primary:power_save";
+  static constexpr const char *ltm_get_mode_cmd_ = "Ltm:GetUserMode:Primary";
 };
 
 }  // namespace sdm

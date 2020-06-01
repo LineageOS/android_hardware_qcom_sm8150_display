@@ -21,6 +21,7 @@
 #define __HWC_DISPLAY_H__
 
 #include <QService.h>
+#include <aidl/com/google/hardware/pixel/display/BnDisplay.h>
 #include <android/hardware/graphics/common/1.1/types.h>
 #include <core/core_interface.h>
 #include <hardware/hwcomposer.h>
@@ -45,6 +46,8 @@
 using android::hardware::graphics::common::V1_1::ColorMode;
 using android::hardware::graphics::common::V1_1::Dataspace;
 using android::hardware::graphics::common::V1_1::RenderIntent;
+using HbmState = ::aidl::com::google::hardware::pixel::display::HbmState;
+using LbeState = ::aidl::com::google::hardware::pixel::display::LbeState;
 
 namespace sdm {
 
@@ -135,6 +138,12 @@ class HWCDisplay : public DisplayEventHandler {
     kNormalValidate,
     kInternalValidate,
     kSkipValidate,
+  };
+
+  enum HbmClient {
+    HWC = 0,
+    APP,
+    CLIENT_MAX,
   };
 
   struct HWCLayerStack {
@@ -376,6 +385,10 @@ class HWCDisplay : public DisplayEventHandler {
   virtual HWC2::Error SetAutoLowLatencyMode(bool on) { return HWC2::Error::Unsupported; };
   virtual HWC2::Error GetSupportedContentTypes(uint32_t *out_num_types, uint32_t *out_types);
   virtual HWC2::Error SetContentType(int32_t content_type);
+
+  virtual bool IsHbmSupported() { return false; }
+  virtual HWC2::Error SetHbm(HbmState state, HbmClient client) { return HWC2::Error::None; }
+  virtual HbmState GetHbm() { return HbmState::OFF; }
 
  protected:
   static uint32_t throttling_refresh_rate_;
