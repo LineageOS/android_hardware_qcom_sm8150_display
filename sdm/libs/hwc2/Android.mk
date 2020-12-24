@@ -10,6 +10,7 @@ LOCAL_MODULE_RELATIVE_PATH    := hw
 LOCAL_MODULE_TAGS             := optional
 LOCAL_C_INCLUDES              := $(common_includes)
 LOCAL_C_INCLUDES              += $(kernel_includes)
+#LOCAL_C_INCLUDES              += $(LOCAL_PATH)/../../../../include/qdMetaData.h
 LOCAL_ADDITIONAL_DEPENDENCIES := $(common_deps)
 LOCAL_HEADER_LIBRARIES        := display_headers
 
