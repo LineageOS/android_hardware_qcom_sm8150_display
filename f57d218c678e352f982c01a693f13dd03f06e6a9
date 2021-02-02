@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "81952058_f6ad5b0d",
+        "filename": "display-commonsys-intf/Android.bp",
+        "patchSetId": 3
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 18205
+      },
+      "writtenOn": "2021-02-02T16:34:36Z",
+      "side": 0,
+      "message": "You could also leave this in, and not move the header",
+      "range": {
+        "startLine": 8,
+        "startChar": 0,
+        "endLine": 8,
+        "endChar": 24
+      },
+      "revId": "f57d218c678e352f982c01a693f13dd03f06e6a9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
