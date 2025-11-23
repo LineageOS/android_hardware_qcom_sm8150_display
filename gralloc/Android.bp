@@ -75,7 +75,7 @@ cc_library_shared {
         "-Wno-unused-variable",
     ],
     export_cflags: select(soong_config_variable("qtidisplay", "gralloc_handle_has_reserved_size"), {
-        "true": ["-DGRALLOC_HANDLE_HAS_RESERVED_SIZE"],
+        true: ["-DGRALLOC_HANDLE_HAS_RESERVED_SIZE"],
         default: [],
     }),
     srcs: [
@@ -226,7 +226,7 @@ cc_binary {
         "-DLOG_TAG=\"qdgralloc\"",
         "-Wno-sign-conversion",
     ] + select(soong_config_variable("qtidisplay", "gralloc4"), {
-        "true": ["-DTARGET_USES_GRALLOC4"],
+        true: ["-DTARGET_USES_GRALLOC4"],
         default: [],
     }),
     srcs: [
